@@ -8,6 +8,7 @@ Syncs college football recruiting and transfer portal data from On3 and 247Sport
 - [uv](https://docs.astral.sh/uv/) package manager
 - Supabase project
 - GitHub PAT with access to `bowenaguero/cfb-cli`
+- [Supabase CLI](https://supabase.com/docs/guides/cli) (for webhooks)
 
 ## Setup
 
@@ -86,32 +87,121 @@ uv run python -m cfb_tracker.main
 
 ### 1. Push to GitHub
 
+```bash
+git add .
+git commit -m "Initial commit"
+git push origin main
+```
+
 ### 2. Create Railway project
 
-- Connect your GitHub repo
-- Railway will auto-detect the Dockerfile
+1. Go to [Railway](https://railway.app) and create a new project
+2. Select "Deploy from GitHub repo"
+3. Connect your `cfb-tracker` repository
+4. Railway will auto-detect the Dockerfile and build
 
 ### 3. Set environment variables
 
-In Railway dashboard, add:
+In Railway dashboard → Variables, add:
 
 | Variable | Value |
 |----------|-------|
 | `GH_PAT` | Your GitHub PAT |
-| `SUPABASE_URL` | Your Supabase URL |
+| `SUPABASE_URL` | Your Supabase project URL |
 | `SUPABASE_KEY` | Your Supabase service role key |
-| `ON3_TEAM_NAME` | Team name for On3 |
-| `TEAM_247_NAME` | Team name for 247Sports |
-| `ON3_YEAR` | Recruiting year |
-| `TEAM_247_YEAR` | Recruiting year |
+| `ON3_TEAM_NAME` | Team name for On3 (e.g., `auburn-tigers`) |
+| `TEAM_247_NAME` | Team name for 247Sports (e.g., `auburn`) |
+| `ON3_YEAR` | Recruiting year for On3 |
+| `TEAM_247_YEAR` | Recruiting year for 247Sports |
 
 ### 4. Cron schedule
 
 The service is configured to run every 30 minutes via `railway.toml`. To change the schedule, edit `cronSchedule` in that file.
 
+## Webhooks (optional)
+
+Send notifications to external services when records are added, updated, or deleted.
+
+### 1. Install and link Supabase CLI
+
+```bash
+# Install Supabase CLI (macOS)
+brew install supabase/tap/supabase
+
+# Or via npm
+npm install -g supabase
+
+# Login to Supabase
+supabase login
+
+# Link to your project (get project ref from Supabase dashboard URL)
+supabase link --project-ref your-project-ref
+```
+
+### 2. Deploy the edge function
+
+```bash
+supabase functions deploy webhook-forwarder
+```
+
+### 3. Set edge function secrets
+
+```bash
+supabase secrets set RECRUITS_WEBHOOK_URL=https://your-webhook.com/recruits
+supabase secrets set PORTAL_WEBHOOK_URL=https://your-webhook.com/portal
+```
+
+### 4. Configure database settings
+
+In Supabase SQL Editor, set the URL and service key for the triggers:
+
+```sql
+ALTER DATABASE postgres SET app.settings.supabase_url = 'https://your-project.supabase.co';
+ALTER DATABASE postgres SET app.settings.service_role_key = 'your-service-role-key';
+```
+
+### 5. Create the triggers
+
+Run the contents of `supabase/migrations/001_webhook_triggers.sql` in Supabase SQL Editor.
+
+### Webhook payload
+
+```json
+{
+  "event": "insert | update | delete",
+  "table": "recruits",
+  "record": { "entry_id": "abc123", "name": "john smith", ... },
+  "old_record": { ... },
+  "timestamp": "2025-12-29T12:00:00.000Z"
+}
+```
+
 ## How it works
 
-1. Fetches recruit/portal data from On3 and 247Sports using cfb-cli
-2. Normalizes player names to handle variations (e.g., "DJ Smith" vs "Derrick Smith")
-3. Merges data from both sources (higher ratings win, tracks which sources have the player)
-4. Syncs to Supabase: upserts new/updated records, deletes players no longer in source data
+1. **Fetches data** from On3 and 247Sports using cfb-cli
+2. **Normalizes names** to handle variations across sources:
+   - "DJ Smith" and "Derrick Smith" → same player
+   - "John Smith Jr." and "John Smith, Jr" → same player
+   - "Kensly Ladour-Foustin III" and "Kensley Foustin" → same player
+3. **Merges with 247 as authoritative** - 247Sports data takes priority; On3 only fills gaps
+4. **Syncs to Supabase** - upserts new/updated records, deletes players no longer in source data
+5. **Logs in JSON format** for easy parsing in production
+
+## Project structure
+
+```
+src/cfb_tracker/
+├── main.py          # Entry point, orchestrates sync
+├── config.py        # Environment variable loading
+├── normalizer.py    # Name normalization and ID generation
+├── fetcher.py       # Fetches and merges data from both sources
+├── sync.py          # Syncs data to Supabase
+└── db.py            # Supabase client wrapper
+
+supabase/
+├── functions/
+│   └── webhook-forwarder/
+│       └── index.ts    # Edge function for webhooks
+└── migrations/
+    └── 001_webhook_triggers.sql  # Database triggers
+```
