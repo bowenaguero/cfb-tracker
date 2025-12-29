@@ -6,4 +6,4 @@ dockerfilePath = "Dockerfile"
 GH_PAT = "${{GH_PAT}}"
 
 [deploy]
-cronSchedule = "*/30 * * * *"
+cronSchedule = "*/10 * * * *"
