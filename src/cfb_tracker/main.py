@@ -1,25 +1,43 @@
 import logging
 
+from pythonjsonlogger import jsonlogger
+
 from cfb_tracker.config import config
 from cfb_tracker.fetcher import fetch_portal, fetch_recruits
 from cfb_tracker.sync import sync_table
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+
+def setup_logging():
+    handler = logging.StreamHandler()
+    formatter = jsonlogger.JsonFormatter(
+        fmt="%(asctime)s %(levelname)s %(name)s %(message)s",
+        rename_fields={"asctime": "timestamp", "levelname": "level"},
+    )
+    handler.setFormatter(formatter)
+
+    root = logging.getLogger()
+    root.setLevel(logging.INFO)
+    root.handlers = [handler]
+
+
+setup_logging()
 logger = logging.getLogger(__name__)
 
 
 def main():
-    logger.info("Starting CFB Tracker sync...")
+    logger.info("Starting CFB Tracker sync")
 
     recruits = fetch_recruits()
     if recruits:
-        sync_table(config.RECRUITS_TABLE, recruits)
+        result = sync_table(config.RECRUITS_TABLE, recruits)
+        logger.info("Recruits sync complete", extra={"table": config.RECRUITS_TABLE, **result})
     else:
         logger.warning("No recruit data fetched from any source")
 
     portal = fetch_portal()
     if portal:
-        sync_table(config.PORTAL_TABLE, portal)
+        result = sync_table(config.PORTAL_TABLE, portal)
+        logger.info("Portal sync complete", extra={"table": config.PORTAL_TABLE, **result})
     else:
         logger.warning("No portal data fetched from any source")
 
