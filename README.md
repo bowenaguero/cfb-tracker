@@ -34,7 +34,8 @@ CREATE TABLE IF NOT EXISTS recruits (
     stars int,
     rating float,
     status text,
-    source text
+    source text,
+    updated_at timestamptz
 );
 
 CREATE TABLE IF NOT EXISTS portal (
@@ -44,7 +45,8 @@ CREATE TABLE IF NOT EXISTS portal (
     position text,
     direction text,
     status text,
-    source text
+    source text,
+    updated_at timestamptz
 );
 
 ALTER TABLE recruits ENABLE ROW LEVEL SECURITY;
