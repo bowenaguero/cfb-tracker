@@ -13,6 +13,8 @@ class Config(BaseSettings):
     ON3_YEAR: int
     TEAM_247_NAME: str
     TEAM_247_YEAR: int
+    REDIS_URL: str | None = None
+    TEAM: str
 
 
 config = Config()

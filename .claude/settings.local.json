@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(uv run ruff:*)",
-      "Bash(docker build:*)"
+      "Bash(docker build:*)",
+      "Bash(tree:*)",
+      "Bash(git -C /home/bowenaguero/Code/projects/cfb-tracker log --oneline --graph -20)"
     ]
   }
 }

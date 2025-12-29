@@ -27,6 +27,7 @@ def _portal_to_dict(player, direction: str, source: str) -> dict:
         "name": player.name.strip(),
         "position": normalize_position(player.position),
         "direction": direction,
+        "source_school": getattr(player, "source_school", None),
         "status": getattr(player, "status", None),
         "source": source,
     }
@@ -44,12 +45,12 @@ def _merge_records(records: list[dict]) -> list[dict]:
 
             # 247 is authoritative - prefer its data for all fields
             if is_247:
-                for key in ["stars", "rating", "status", "position", "hometown", "direction"]:
+                for key in ["stars", "rating", "status", "position", "hometown", "direction", "source_school"]:
                     if record.get(key) is not None:
                         existing[key] = record[key]
             else:
                 # on3 only fills gaps where 247 has no data
-                for key in ["stars", "rating", "status", "position", "hometown", "direction"]:
+                for key in ["stars", "rating", "status", "position", "hometown", "direction", "source_school"]:
                     if existing.get(key) is None and record.get(key) is not None:
                         existing[key] = record[key]
 

@@ -8,7 +8,8 @@ Syncs college football recruiting and transfer portal data from On3 and 247Sport
 - [uv](https://docs.astral.sh/uv/) package manager
 - Supabase project
 - GitHub PAT with access to `bowenaguero/cfb-cli`
-- [Supabase CLI](https://supabase.com/docs/guides/cli) (for webhooks)
+- [Supabase CLI](https://supabase.com/docs/guides/cli) (for webhooks, optional)
+- Redis instance (for social media queue, optional)
 
 ## Setup
 
@@ -44,6 +45,7 @@ CREATE TABLE IF NOT EXISTS portal (
     name text,
     position text,
     direction text,
+    source_school text,
     status text,
     source text,
     updated_at timestamptz
@@ -69,6 +71,12 @@ TEAM_247_NAME=auburn
 # Recruiting years
 ON3_YEAR=2026
 TEAM_247_YEAR=2026
+
+# Team display name (for social media posts)
+TEAM="Auburn Tigers"
+
+# Redis (optional - for social media queue)
+REDIS_URL=redis://localhost:6379
 ```
 
 ### 4. Install cfb-cli
@@ -113,14 +121,112 @@ In Railway dashboard → Variables, add:
 | `TEAM_247_NAME` | Team name for 247Sports (e.g., `auburn`) |
 | `ON3_YEAR` | Recruiting year for On3 |
 | `TEAM_247_YEAR` | Recruiting year for 247Sports |
+| `TEAM` | Team display name (e.g., `Auburn Tigers`) |
+| `REDIS_URL` | Redis connection URL (optional, for social media queue) |
 
 ### 4. Cron schedule
 
-The service is configured to run every 30 minutes via `railway.toml`. To change the schedule, edit `cronSchedule` in that file.
+The service is configured to run every 10 minutes via `railway.toml`. To change the schedule, edit `cronSchedule` in that file.
+
+## Social Media Queue (optional)
+
+Centralize social media posting logic using Redis Queue (RQ). When player data changes, the scraper enqueues jobs to a persistent worker that handles posting to social platforms.
+
+### Architecture
+
+- **Scraper (cron job):** Enqueues jobs when players are added or status changes occur
+- **Worker (always-on):** Processes jobs and posts to social media (currently simulated with 2-second delay)
+- **Queue:** Redis stores jobs, enabling multiple team instances to share one worker
+
+### Local setup
+
+**1. Start Redis:**
+
+```bash
+docker run -d -p 6379:6379 redis:7-alpine
+```
+
+**2. Add to `.env`:**
+
+```env
+REDIS_URL=redis://localhost:6379
+TEAM="Auburn Tigers"
+```
+
+**3. Start the worker:**
+
+```bash
+uv run rq worker social-posts --url redis://localhost:6379
+```
+
+**4. Run the scraper:**
+
+```bash
+uv run python -m cfb_tracker.main
+```
+
+**5. Monitor the queue:**
+
+```bash
+uv run rq info --url redis://localhost:6379
+```
+
+### Railway deployment
+
+**1. Provision Redis add-on**
+
+In Railway dashboard:
+- Click "New" → "Database" → "Add Redis"
+- This auto-sets the `REDIS_URL` environment variable
+
+**2. Add `TEAM` environment variable**
+
+In your sync service Variables, add:
+
+| Variable | Value |
+|----------|-------|
+| `TEAM` | `Auburn Tigers` (or your team name) |
+
+**3. Create worker service**
+
+1. Click "New" → "GitHub Repo" → Select `cfb-tracker`
+2. In Settings → Deploy:
+   - **Custom Start Command:** `uv run rq worker social-posts --url $REDIS_URL`
+3. Link the Redis add-on to this service
+4. Add the `TEAM` environment variable
+
+### Job payload
+
+Workers receive job payloads like:
+
+```json
+{
+  "event_type": "status_change",
+  "table": "recruits",
+  "team": "Auburn Tigers",
+  "player": {
+    "name": "John Smith",
+    "position": "QB",
+    "hometown": "Birmingham, AL",
+    "stars": 4
+  },
+  "old_status": "uncommitted",
+  "new_status": "committed"
+}
+```
+
+The worker generates messages like:
+- **New recruit:** "🎉 New recruit alert! ⭐⭐⭐⭐ John Smith (QB) from Birmingham, AL..."
+- **Commitment:** "🔥 COMMITMENT ALERT! 🔥 John Smith (QB) has committed to Auburn Tigers!"
+- **Portal entry:** "📥 Portal update! Mike Johnson (WR) from Alabama is entering the transfer portal..."
+
+### Graceful degradation
+
+If Redis is unavailable, the scraper logs a warning and continues syncing to Supabase without enqueuing jobs. This ensures the core functionality (data sync) is never blocked by social media posting.
 
 ## Webhooks (optional)
 
-Send notifications to external services when records are added, updated, or deleted.
+Send notifications to external services when records are added, updated, or deleted in Supabase.
 
 ### 1. Install and link Supabase CLI
 
@@ -186,7 +292,9 @@ Your external endpoint will receive:
    - "Kensly Ladour-Foustin III" and "Kensley Foustin" → same player
 3. **Merges with 247 as authoritative** - 247Sports data takes priority; On3 only fills gaps
 4. **Syncs to Supabase** - upserts new/updated records, deletes players no longer in source data
-5. **Logs in JSON format** for easy parsing in production
+5. **Enqueues social media jobs** (optional) - when new players are added or status changes, jobs are sent to Redis queue
+6. **Worker processes jobs** (optional) - generates and posts social media updates (currently simulated)
+7. **Logs in JSON format** for easy parsing in production
 
 ## Project structure
 
@@ -196,8 +304,10 @@ src/cfb_tracker/
 ├── config.py        # Environment variable loading
 ├── normalizer.py    # Name normalization and ID generation
 ├── fetcher.py       # Fetches and merges data from both sources
-├── sync.py          # Syncs data to Supabase
-└── db.py            # Supabase client wrapper
+├── sync.py          # Syncs data to Supabase, enqueues jobs
+├── db.py            # Supabase client wrapper
+├── queue.py         # Redis queue management
+└── worker.py        # Social media job processor
 
 supabase/
 ├── functions/

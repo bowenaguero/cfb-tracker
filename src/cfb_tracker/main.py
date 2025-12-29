@@ -4,6 +4,7 @@ from pythonjsonlogger import jsonlogger
 
 from cfb_tracker.config import config
 from cfb_tracker.fetcher import fetch_portal, fetch_recruits
+from cfb_tracker.queue import init_queue
 from cfb_tracker.sync import sync_table
 
 
@@ -26,6 +27,13 @@ logger = logging.getLogger(__name__)
 
 def main():
     logger.info("Starting CFB Tracker sync")
+
+    # Initialize Redis queue (graceful if unavailable)
+    queue_available = init_queue()
+    if queue_available:
+        logger.info("Queue initialized - social posts will be enqueued")
+    else:
+        logger.info("Queue unavailable - sync will continue without social posts")
 
     recruits = fetch_recruits()
     if recruits:

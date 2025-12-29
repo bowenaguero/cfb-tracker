@@ -2,6 +2,7 @@ import logging
 from datetime import datetime, timezone
 
 from cfb_tracker import db
+from cfb_tracker.queue import enqueue_event
 
 logger = logging.getLogger(__name__)
 
@@ -21,10 +22,22 @@ def sync_table(table_name: str, fresh_records: list[dict]) -> dict:
             # New record
             record["updated_at"] = datetime.now(timezone.utc).isoformat()
             to_upsert.append(record)
+
+            # Enqueue social post job for new player
+            _enqueue_new_player_event(table_name, record)
+
         elif record.get("status") != existing_record.get("status"):
             # Status changed
             record["updated_at"] = datetime.now(timezone.utc).isoformat()
             to_upsert.append(record)
+
+            # Enqueue social post job for status change
+            _enqueue_status_change_event(
+                table_name,
+                record,
+                old_status=existing_record.get("status"),
+                new_status=record.get("status"),
+            )
 
     if to_upsert:
         db.upsert_records(table_name, to_upsert)
@@ -36,3 +49,47 @@ def sync_table(table_name: str, fresh_records: list[dict]) -> dict:
 
     logger.info(f"[{table_name}] Upserted: {len(to_upsert)}, Deleted: {len(stale_ids)}")
     return {"upserted": len(to_upsert), "deleted": len(stale_ids)}
+
+
+def _enqueue_new_player_event(table_name: str, record: dict) -> None:
+    """Enqueue job for new player event with error handling."""
+    try:
+        enqueue_event(
+            event_type="new_player",
+            table=table_name,
+            player_data=record,
+        )
+    except Exception:
+        # Log but don't fail the sync
+        logger.exception(
+            "Failed to enqueue new player event",
+            extra={"table": table_name, "player": record.get("name")},
+        )
+
+
+def _enqueue_status_change_event(
+    table_name: str,
+    record: dict,
+    old_status: str | None,
+    new_status: str | None,
+) -> None:
+    """Enqueue job for status change event with error handling."""
+    try:
+        enqueue_event(
+            event_type="status_change",
+            table=table_name,
+            player_data=record,
+            old_status=old_status,
+            new_status=new_status,
+        )
+    except Exception:
+        # Log but don't fail the sync
+        logger.exception(
+            "Failed to enqueue status change event",
+            extra={
+                "table": table_name,
+                "player": record.get("name"),
+                "old_status": old_status,
+                "new_status": new_status,
+            },
+        )
