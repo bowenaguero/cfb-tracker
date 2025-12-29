@@ -23,6 +23,6 @@ RUN if [ -n "$GH_PAT" ]; then \
     uv pip install git+https://${GH_PAT}@github.com/bowenaguero/cfb-cli.git; \
     fi
 
-RUN playwright install --with-deps
+RUN uv run playwright install --with-deps
 
 CMD ["uv", "run", "python", "-m", "cfb_tracker.main"]
