@@ -1,10 +1,9 @@
 import logging
-from datetime import datetime, timezone
 
 from cfb_cli import get_scraper
 
 from cfb_tracker.config import config
-from cfb_tracker.normalizer import generate_id, normalize_name, normalize_position
+from cfb_tracker.normalizer import generate_id, normalize_position
 
 logger = logging.getLogger(__name__)
 
@@ -12,26 +11,24 @@ logger = logging.getLogger(__name__)
 def _recruit_to_dict(recruit, source: str) -> dict:
     return {
         "entry_id": generate_id(recruit.name),
-        "name": normalize_name(recruit.name),
+        "name": recruit.name.strip(),
         "position": normalize_position(recruit.position),
         "hometown": recruit.hometown,
         "stars": recruit.stars,
         "rating": recruit.rating,
         "status": getattr(recruit, "status", None),
         "source": source,
-        "updated_at": datetime.now(timezone.utc).isoformat(),
     }
 
 
 def _portal_to_dict(player, direction: str, source: str) -> dict:
     return {
         "entry_id": generate_id(player.name),
-        "name": normalize_name(player.name),
+        "name": player.name.strip(),
         "position": normalize_position(player.position),
         "direction": direction,
         "status": getattr(player, "status", None),
         "source": source,
-        "updated_at": datetime.now(timezone.utc).isoformat(),
     }
 
 
