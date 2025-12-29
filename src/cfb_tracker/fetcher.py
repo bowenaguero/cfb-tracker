@@ -43,18 +43,23 @@ def _merge_records(records: list[dict]) -> list[dict]:
             merged[rid] = record
         else:
             existing = merged[rid]
-            # prefer higher stars/rating
-            if (record.get("stars") or 0) > (existing.get("stars") or 0):
-                existing["stars"] = record["stars"]
-            if (record.get("rating") or 0) > (existing.get("rating") or 0):
-                existing["rating"] = record["rating"]
+            is_247 = record["source"] == "247"
+
+            # 247 is authoritative - prefer its data for all fields
+            if is_247:
+                for key in ["stars", "rating", "status", "position", "hometown", "direction"]:
+                    if record.get(key) is not None:
+                        existing[key] = record[key]
+            else:
+                # on3 only fills gaps where 247 has no data
+                for key in ["stars", "rating", "status", "position", "hometown", "direction"]:
+                    if existing.get(key) is None and record.get(key) is not None:
+                        existing[key] = record[key]
+
             # track both sources
             sources = set(existing["source"].split(","))
             sources.add(record["source"])
             existing["source"] = ",".join(sorted(sources))
-            # prefer non-null status
-            if record.get("status") and not existing.get("status"):
-                existing["status"] = record["status"]
     return list(merged.values())
 
 
