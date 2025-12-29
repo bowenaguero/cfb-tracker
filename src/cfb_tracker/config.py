@@ -1,0 +1,18 @@
+from dotenv import load_dotenv
+from pydantic_settings import BaseSettings
+
+load_dotenv()
+
+
+class Config(BaseSettings):
+    SUPABASE_URL: str
+    SUPABASE_KEY: str
+    RECRUITS_TABLE: str = "recruits"
+    PORTAL_TABLE: str = "portal"
+    ON3_TEAM_NAME: str
+    ON3_YEAR: int
+    TEAM_247_NAME: str
+    TEAM_247_YEAR: int
+
+
+config = Config()

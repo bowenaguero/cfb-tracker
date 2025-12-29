@@ -1,0 +1,110 @@
+import logging
+from datetime import datetime, timezone
+
+from cfb_cli import get_scraper
+
+from cfb_tracker.config import config
+from cfb_tracker.normalizer import generate_id, normalize_name, normalize_position
+
+logger = logging.getLogger(__name__)
+
+
+def _recruit_to_dict(recruit, source: str) -> dict:
+    return {
+        "entry_id": generate_id(recruit.name),
+        "name": normalize_name(recruit.name),
+        "position": normalize_position(recruit.position),
+        "hometown": recruit.hometown,
+        "stars": recruit.stars,
+        "rating": recruit.rating,
+        "status": getattr(recruit, "status", None),
+        "source": source,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+def _portal_to_dict(player, direction: str, source: str) -> dict:
+    return {
+        "entry_id": generate_id(player.name),
+        "name": normalize_name(player.name),
+        "position": normalize_position(player.position),
+        "direction": direction,
+        "status": getattr(player, "status", None),
+        "source": source,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+def _merge_records(records: list[dict]) -> list[dict]:
+    merged: dict[str, dict] = {}
+    for record in records:
+        rid = record["entry_id"]
+        if rid not in merged:
+            merged[rid] = record
+        else:
+            existing = merged[rid]
+            # prefer higher stars/rating
+            if (record.get("stars") or 0) > (existing.get("stars") or 0):
+                existing["stars"] = record["stars"]
+            if (record.get("rating") or 0) > (existing.get("rating") or 0):
+                existing["rating"] = record["rating"]
+            # track both sources
+            sources = set(existing["source"].split(","))
+            sources.add(record["source"])
+            existing["source"] = ",".join(sorted(sources))
+            # prefer non-null status
+            if record.get("status") and not existing.get("status"):
+                existing["status"] = record["status"]
+    return list(merged.values())
+
+
+def fetch_recruits() -> list[dict]:
+    records = []
+
+    try:
+        scraper = get_scraper("on3", headless=True)
+        data = scraper.fetch_recruit_data(config.ON3_TEAM_NAME, config.ON3_YEAR)
+        for r in data.recruits:
+            records.append(_recruit_to_dict(r, "on3"))
+        logger.info(f"Fetched {len(data.recruits)} recruits from On3")
+    except Exception:
+        logger.exception("Failed to fetch from On3")
+
+    try:
+        scraper = get_scraper("247sports", headless=True)
+        data = scraper.fetch_recruit_data(config.TEAM_247_NAME, config.TEAM_247_YEAR)
+        for r in data.recruits:
+            records.append(_recruit_to_dict(r, "247"))
+        logger.info(f"Fetched {len(data.recruits)} recruits from 247Sports")
+    except Exception:
+        logger.exception("Failed to fetch from 247Sports")
+
+    return _merge_records(records)
+
+
+def fetch_portal() -> list[dict]:
+    records = []
+
+    try:
+        scraper = get_scraper("on3", headless=True)
+        data = scraper.fetch_portal_data(config.ON3_TEAM_NAME, config.ON3_YEAR)
+        for p in data.incoming:
+            records.append(_portal_to_dict(p, "incoming", "on3"))
+        for p in data.outgoing:
+            records.append(_portal_to_dict(p, "outgoing", "on3"))
+        logger.info(f"Fetched {len(data.incoming)} incoming, {len(data.outgoing)} outgoing from On3")
+    except Exception:
+        logger.exception("Failed to fetch portal from On3")
+
+    try:
+        scraper = get_scraper("247sports", headless=True)
+        data = scraper.fetch_portal_data(config.TEAM_247_NAME, config.TEAM_247_YEAR)
+        for p in data.incoming:
+            records.append(_portal_to_dict(p, "incoming", "247"))
+        for p in data.outgoing:
+            records.append(_portal_to_dict(p, "outgoing", "247"))
+        logger.info(f"Fetched {len(data.incoming)} incoming, {len(data.outgoing)} outgoing from 247Sports")
+    except Exception:
+        logger.exception("Failed to fetch portal from 247Sports")
+
+    return _merge_records(records)

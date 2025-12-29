@@ -1,21 +1,25 @@
-# Install uv
 FROM python:3.12-slim
+
+# Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 
-# Change the working directory to the `app` directory
 WORKDIR /app
 
-# Copy the lockfile and `pyproject.toml` into the image
-COPY uv.lock /app/uv.lock
-COPY pyproject.toml /app/pyproject.toml
+# Copy dependency files
+COPY uv.lock pyproject.toml README.md ./
 
-# Install dependencies
-RUN uv sync --frozen --no-install-project
-
-# Copy the project into the image
-COPY . /app
+# Copy source code
+COPY src ./src
 
 # Sync the project
-RUN uv sync --frozen
+RUN uv sync
 
-CMD [ "python", "cfb_tracker/foo.py" ]
+# Install cfb-cli from private repo (GH_PAT passed at runtime or build)
+ARG GH_PAT
+RUN if [ -n "$GH_PAT" ]; then \
+    uv pip install git+https://${GH_PAT}@github.com/bowenaguero/cfb-cli.git; \
+    fi
+
+RUN playwright install --with-deps
+
+CMD ["uv", "run", "python", "-m", "cfb_tracker.main"]

@@ -1,69 +1,117 @@
 # cfb-tracker
 
-[![Release](https://img.shields.io/github/v/release/bowenaguero/cfb-tracker)](https://img.shields.io/github/v/release/bowenaguero/cfb-tracker)
-[![Build status](https://img.shields.io/github/actions/workflow/status/bowenaguero/cfb-tracker/main.yml?branch=main)](https://github.com/bowenaguero/cfb-tracker/actions/workflows/main.yml?query=branch%3Amain)
-[![codecov](https://codecov.io/gh/bowenaguero/cfb-tracker/branch/main/graph/badge.svg)](https://codecov.io/gh/bowenaguero/cfb-tracker)
-[![Commit activity](https://img.shields.io/github/commit-activity/m/bowenaguero/cfb-tracker)](https://img.shields.io/github/commit-activity/m/bowenaguero/cfb-tracker)
-[![License](https://img.shields.io/github/license/bowenaguero/cfb-tracker)](https://img.shields.io/github/license/bowenaguero/cfb-tracker)
+Syncs college football recruiting and transfer portal data from On3 and 247Sports to Supabase. Designed to run as a cron job on Railway.
 
-Your team, every - single - hour.
+## Prerequisites
 
-- **Github repository**: <https://github.com/bowenaguero/cfb-tracker/>
-- **Documentation** <https://bowenaguero.github.io/cfb-tracker/>
+- Python 3.10+
+- [uv](https://docs.astral.sh/uv/) package manager
+- Supabase project
+- GitHub PAT with access to `bowenaguero/cfb-cli`
 
-## Getting started with your project
+## Setup
 
-### 1. Create a New Repository
-
-First, create a repository on GitHub with the same name as this project, and then run the following commands:
+### 1. Clone and install
 
 ```bash
-git init -b main
-git add .
-git commit -m "init commit"
-git remote add origin git@github.com:bowenaguero/cfb-tracker.git
-git push -u origin main
+git clone https://github.com/bowenaguero/cfb-tracker.git
+cd cfb-tracker
+uv sync
 ```
 
-### 2. Set Up Your Development Environment
+### 2. Create Supabase tables
 
-Then, install the environment and the pre-commit hooks with
+Run this SQL in your Supabase dashboard (SQL Editor):
+
+```sql
+CREATE TABLE IF NOT EXISTS recruits (
+    id bigint generated always as identity primary key,
+    entry_id text unique not null,
+    name text,
+    position text,
+    hometown text,
+    stars int,
+    rating float,
+    status text,
+    source text,
+    updated_at timestamptz
+);
+
+CREATE TABLE IF NOT EXISTS portal (
+    id bigint generated always as identity primary key,
+    entry_id text unique not null,
+    name text,
+    position text,
+    direction text,
+    status text,
+    source text,
+    updated_at timestamptz
+);
+
+ALTER TABLE recruits ENABLE ROW LEVEL SECURITY;
+ALTER TABLE portal ENABLE ROW LEVEL SECURITY;
+```
+
+### 3. Configure environment
+
+Create a `.env` file:
+
+```env
+# Supabase
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_KEY=your-service-role-key
+
+# Team names (as they appear in URLs)
+ON3_TEAM_NAME=auburn-tigers
+TEAM_247_NAME=auburn
+
+# Recruiting years
+ON3_YEAR=2026
+TEAM_247_YEAR=2026
+```
+
+### 4. Install cfb-cli
 
 ```bash
-make install
+uv pip install git+https://<YOUR_GH_PAT>@github.com/bowenaguero/cfb-cli.git
 ```
 
-This will also generate your `uv.lock` file
-
-### 3. Run the pre-commit hooks
-
-Initially, the CI/CD pipeline might be failing due to formatting issues. To resolve those run:
+### 5. Run locally
 
 ```bash
-uv run pre-commit run -a
+uv run python -m cfb_tracker.main
 ```
 
-### 4. Commit the changes
+## Deploy to Railway
 
-Lastly, commit the changes made by the two steps above to your repository.
+### 1. Push to GitHub
 
-```bash
-git add .
-git commit -m 'Fix formatting issues'
-git push origin main
-```
+### 2. Create Railway project
 
-You are now ready to start development on your project!
-The CI/CD pipeline will be triggered when you open a pull request, merge to main, or when you create a new release.
+- Connect your GitHub repo
+- Railway will auto-detect the Dockerfile
 
-To finalize the set-up for publishing to PyPI, see [here](https://fpgmaas.github.io/cookiecutter-uv/features/publishing/#set-up-for-pypi).
-For activating the automatic documentation with MkDocs, see [here](https://fpgmaas.github.io/cookiecutter-uv/features/mkdocs/#enabling-the-documentation-on-github).
-To enable the code coverage reports, see [here](https://fpgmaas.github.io/cookiecutter-uv/features/codecov/).
+### 3. Set environment variables
 
-## Releasing a new version
+In Railway dashboard, add:
 
+| Variable | Value |
+|----------|-------|
+| `GH_PAT` | Your GitHub PAT |
+| `SUPABASE_URL` | Your Supabase URL |
+| `SUPABASE_KEY` | Your Supabase service role key |
+| `ON3_TEAM_NAME` | Team name for On3 |
+| `TEAM_247_NAME` | Team name for 247Sports |
+| `ON3_YEAR` | Recruiting year |
+| `TEAM_247_YEAR` | Recruiting year |
 
+### 4. Configure cron
 
----
+In Railway service settings, set up a cron schedule (e.g., `0 * * * *` for hourly).
 
-Repository initiated with [fpgmaas/cookiecutter-uv](https://github.com/fpgmaas/cookiecutter-uv).
+## How it works
+
+1. Fetches recruit/portal data from On3 and 247Sports using cfb-cli
+2. Normalizes player names to handle variations (e.g., "DJ Smith" vs "Derrick Smith")
+3. Merges data from both sources (higher ratings win, tracks which sources have the player)
+4. Syncs to Supabase: upserts new/updated records, deletes players no longer in source data

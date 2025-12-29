@@ -17,6 +17,11 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
+dependencies = [
+    "supabase>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "python-dotenv>=1.0.0",
+]
 
 [project.urls]
 Homepage = "https://bowenaguero.github.io/cfb-tracker/"
