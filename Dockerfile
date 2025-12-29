@@ -16,8 +16,9 @@ RUN uv sync
 
 # Install cfb-cli from private repo (GH_PAT passed at runtime or build)
 ARG GH_PAT
+RUN echo "GH_PAT=$GH_PAT"
 RUN if [ -n "$GH_PAT" ]; then \
-    uv pip install git+https://${GH_PAT}@github.com/bowenaguero/cfb-cli.git; \
+    uv pip install git+https://$GH_PAT@github.com/bowenaguero/cfb-cli.git; \
     fi
 
 RUN playwright install --with-deps
