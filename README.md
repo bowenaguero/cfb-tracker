@@ -131,10 +131,8 @@ brew install supabase/tap/supabase
 # Or via npm
 npm install -g supabase
 
-# Login to Supabase
+# Login and link to your project
 supabase login
-
-# Link to your project (get project ref from Supabase dashboard URL)
 supabase link --project-ref your-project-ref
 ```
 
@@ -151,20 +149,23 @@ supabase secrets set RECRUITS_WEBHOOK_URL=https://your-webhook.com/recruits
 supabase secrets set PORTAL_WEBHOOK_URL=https://your-webhook.com/portal
 ```
 
-### 4. Configure database settings
+### 4. Create database webhooks
 
-In Supabase SQL Editor, set the URL and service key for the triggers:
+In Supabase Dashboard → Database → Webhooks:
 
-```sql
-ALTER DATABASE postgres SET app.settings.supabase_url = 'https://your-project.supabase.co';
-ALTER DATABASE postgres SET app.settings.service_role_key = 'your-service-role-key';
-```
-
-### 5. Create the triggers
-
-Run the contents of `supabase/migrations/001_webhook_triggers.sql` in Supabase SQL Editor.
+1. Click "Create a new hook"
+2. Configure:
+   - **Name:** `recruits_webhook`
+   - **Table:** `recruits`
+   - **Events:** Insert, Update, Delete
+   - **Type:** Supabase Edge Function
+   - **Edge Function:** `webhook-forwarder`
+3. Click "Create"
+4. Repeat for the `portal` table
 
 ### Webhook payload
+
+Your external endpoint will receive:
 
 ```json
 {
