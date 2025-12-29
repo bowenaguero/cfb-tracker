@@ -4,3 +4,6 @@ dockerfilePath = "Dockerfile"
 
 [build.args]
 GH_PAT = "${{GH_PAT}}"
+
+[deploy]
+cronSchedule = "*/30 * * * *"

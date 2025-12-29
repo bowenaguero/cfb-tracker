@@ -105,9 +105,9 @@ In Railway dashboard, add:
 | `ON3_YEAR` | Recruiting year |
 | `TEAM_247_YEAR` | Recruiting year |
 
-### 4. Configure cron
+### 4. Cron schedule
 
-In Railway service settings, set up a cron schedule (e.g., `0 * * * *` for hourly).
+The service is configured to run every 30 minutes via `railway.toml`. To change the schedule, edit `cronSchedule` in that file.
 
 ## How it works
 
