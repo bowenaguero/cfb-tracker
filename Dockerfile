@@ -5,7 +5,7 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 
 WORKDIR /app
 
-RUN sudo apt-get update @@ sudo apt-get install -y \
+RUN apt-get update && apt-get install -y \
     git
 
 # Copy dependency files
