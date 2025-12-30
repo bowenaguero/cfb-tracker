@@ -194,14 +194,14 @@ In your existing cfb-tracker service → Variables tab, add:
 2. In Settings → General:
    - **Service Name:** `cfb-tracker-worker` (or any name)
 3. In Settings → Deploy:
-   - **Custom Start Command:** `uv run rq worker social-posts --url $REDIS_URL`
+   - **Dockerfile Path:** `worker.Dockerfile`
 4. In Variables tab, add:
 
 | Variable | Value |
 |----------|-------|
 | `REDIS_URL` | Reference: `${{Redis.REDIS_URL}}` |
 
-The `${{Redis.REDIS_URL}}` reference automatically pulls the connection URL from your Redis service. The worker doesn't need the `TEAM` variable since the team name is included in each job payload by the scraper.
+The worker uses a separate, lighter Dockerfile (`worker.Dockerfile`) that skips Playwright and cfb-cli installation, making builds much faster. The `${{Redis.REDIS_URL}}` reference automatically pulls the connection URL from your Redis service.
 
 ### Job payload
 
