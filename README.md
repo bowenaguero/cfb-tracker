@@ -173,27 +173,35 @@ uv run rq info --url redis://localhost:6379
 
 ### Railway deployment
 
-**1. Provision Redis add-on**
+**1. Provision Redis**
 
 In Railway dashboard:
 - Click "New" → "Database" → "Add Redis"
-- This auto-sets the `REDIS_URL` environment variable
+- Railway creates a Redis service with a `REDIS_URL` variable
 
-**2. Add `TEAM` environment variable**
+**2. Update sync service variables**
 
-In your sync service Variables, add:
+In your existing cfb-tracker service → Variables tab, add:
 
 | Variable | Value |
 |----------|-------|
 | `TEAM` | `Auburn Tigers` (or your team name) |
+| `REDIS_URL` | Reference: `${{Redis.REDIS_URL}}` |
 
 **3. Create worker service**
 
 1. Click "New" → "GitHub Repo" → Select `cfb-tracker`
-2. In Settings → Deploy:
+2. In Settings → General:
+   - **Service Name:** `cfb-tracker-worker` (or any name)
+3. In Settings → Deploy:
    - **Custom Start Command:** `uv run rq worker social-posts --url $REDIS_URL`
-3. Link the Redis add-on to this service
-4. Add the `TEAM` environment variable
+4. In Variables tab, add:
+
+| Variable | Value |
+|----------|-------|
+| `REDIS_URL` | Reference: `${{Redis.REDIS_URL}}` |
+
+The `${{Redis.REDIS_URL}}` reference automatically pulls the connection URL from your Redis service. The worker doesn't need the `TEAM` variable since the team name is included in each job payload by the scraper.
 
 ### Job payload
 
