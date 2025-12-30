@@ -47,7 +47,7 @@ def process_social_post(data: dict) -> dict:
     # Build human-readable message based on event type
     message = _build_message(event_type, table, team, player, data)
 
-    logger.info("Social post message generated", extra={"message": message, "player": player.get("name")})
+    logger.info("Social post message generated", extra={"post_content": message, "player_name": player.get("name")})
 
     # Simulate social media API call (2-second sleep)
     # In production, this would be replaced with actual API calls to Twitter/BlueSky/etc.
