@@ -6,7 +6,9 @@
       "Bash(tree:*)",
       "Bash(git -C /home/bowenaguero/Code/projects/cfb-tracker log --oneline --graph -20)",
       "Bash(pip show:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(cat:*)",
+      "Bash(uv run python:*)"
     ]
   }
 }

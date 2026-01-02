@@ -17,7 +17,7 @@ def _recruit_to_dict(recruit, source: str) -> dict:
         "stars": recruit.stars,
         "rating": recruit.rating,
         "status": getattr(recruit, "status", None),
-        "player_url": getattr(recruit, "url", None) or getattr(recruit, "profile_url", None),
+        "player_url": getattr(recruit, "player_url", None),
         "source": source,
     }
 
@@ -30,7 +30,7 @@ def _portal_to_dict(player, direction: str, source: str) -> dict:
         "direction": direction,
         "source_school": getattr(player, "source_school", None),
         "status": getattr(player, "status", None),
-        "player_url": getattr(player, "url", None) or getattr(player, "profile_url", None),
+        "player_url": getattr(player, "player_url", None),
         "source": source,
     }
 
