@@ -45,6 +45,10 @@ def sync_table(table_name: str, fresh_records: list[dict]) -> dict:
     # Delete records no longer in source
     stale_ids = set(existing_by_id.keys()) - fresh_ids
     if stale_ids:
+        # Enqueue player_removed events before deletion
+        for stale_id in stale_ids:
+            stale_record = existing_by_id[stale_id]
+            _enqueue_player_removed_event(table_name, stale_record)
         db.delete_records(table_name, list(stale_ids))
 
     logger.info(f"[{table_name}] Upserted: {len(to_upsert)}, Deleted: {len(stale_ids)}")
@@ -92,4 +96,20 @@ def _enqueue_status_change_event(
                 "old_status": old_status,
                 "new_status": new_status,
             },
+        )
+
+
+def _enqueue_player_removed_event(table_name: str, record: dict) -> None:
+    """Enqueue job for player removed event with error handling."""
+    try:
+        enqueue_event(
+            event_type="player_removed",
+            table=table_name,
+            player_data=record,
+        )
+    except Exception:
+        # Log but don't fail the sync
+        logger.exception(
+            "Failed to enqueue player removed event",
+            extra={"table": table_name, "player": record.get("name")},
         )

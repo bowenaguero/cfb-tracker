@@ -17,6 +17,13 @@ root.handlers = [handler]
 
 logger = logging.getLogger(__name__)
 
+# Emoji constants for message types
+EMOJI_COMMITTED = "\u2705"  # ✅ checkmark
+EMOJI_DECOMMITTED = "\U0001f614"  # 😔 pensive face
+EMOJI_SIGNED = "\U0001f4dd"  # 📝 memo
+EMOJI_PORTAL_ENTER = "\U0001f6a8"  # 🚨 rotating light
+EMOJI_PORTAL_WITHDRAW = "\u21a9\ufe0f"  # ↩️ return arrow
+
 
 def process_social_post(data: dict) -> dict:
     """
@@ -70,61 +77,83 @@ def process_social_post(data: dict) -> dict:
     }
 
 
-def _build_message(
+def _format_stars(stars: int | None) -> str:
+    """Format stars as repeated star emojis."""
+    if not stars or stars < 1:
+        return ""
+    return "\u2b50" * stars
+
+
+def _format_url_line(player_url: str | None) -> str:
+    """Format player URL as trailing line, or empty string if not available."""
+    if player_url:
+        return f"\n\n{player_url}"
+    return ""
+
+
+def _build_message(  # noqa: C901
     event_type: str,
     table: str,
     team: str,
     player: dict,
     data: dict,
 ) -> str:
-    """Build human-readable social media message."""
+    """Build human-readable social media message based on event type and table."""
 
     name = player.get("name")
     position = player.get("position")
+    player_url = player.get("player_url")
+    status = data.get("status") or data.get("new_status", "")
+    status_lower = status.lower() if status else ""
 
-    if event_type == "new_player":
-        if table == "recruits":
-            stars = player.get("stars")
-            hometown = player.get("hometown")
-            star_emoji = "⭐" * stars if stars else ""
-            return f"🎉 New recruit alert! {star_emoji}\n{name} ({position}) from {hometown} is being tracked for {team}!"
+    # RECRUITING MESSAGES (table="recruits")
+    if table == "recruits":
+        stars = _format_stars(player.get("stars"))
+        url_line = _format_url_line(player_url)
 
-        elif table == "portal":
-            direction = player.get("direction")
-            source_school = player.get("source_school")
-            direction_emoji = "📥" if direction == "incoming" else "📤"
+        # Check status for both new_player and status_change events
+        if status_lower == "committed":
+            return f"{EMOJI_COMMITTED}\n{name}, {stars} {position}, has committed to the {team}{url_line}"
 
-            if direction == "incoming":
-                if source_school:
-                    return f"{direction_emoji} Portal update!\n{name} ({position}) from {source_school} is entering the transfer portal for {team}!"
-                else:
-                    return f"{direction_emoji} Portal update!\n{name} ({position}) is entering the transfer portal for {team}!"
-            else:
-                return f"{direction_emoji} Portal update!\n{name} ({position}) is leaving {team} for the transfer portal"
+        elif status_lower == "decommitted":
+            return f"{EMOJI_DECOMMITTED}\n{name}, {stars} {position}, has decommitted from the {team}{url_line}"
 
-    elif event_type == "status_change":
-        old_status = data.get("old_status")
-        new_status = data.get("new_status")
+        elif status_lower in ("signed", "enrolled"):
+            # Signed messages don't include URL per requirements
+            return f"{EMOJI_SIGNED}\n{name}, {stars} {position}, has signed with the {team}"
 
-        if table == "recruits":
-            if new_status == "committed":
-                return f"🔥 COMMITMENT ALERT! 🔥\n{name} ({position}) has committed to {team}!"
-            elif new_status == "decommitted":
-                return f"❌ Decommitment\n{name} ({position}) has decommitted from {team}"
-            else:
-                return f"📝 Status update for {name} ({position}): {old_status} → {new_status}"
+    # PORTAL MESSAGES (table="portal")
+    elif table == "portal":
+        direction = player.get("direction")
+        source_school = player.get("source_school", "")
+        url_line = _format_url_line(player_url)
 
-        elif table == "portal":
-            direction = player.get("direction")
-            source_school = player.get("source_school")
+        # OUTGOING DIRECTION
+        if direction == "outgoing":
+            # Entered portal (new_player with direction="outgoing")
+            if event_type == "new_player":
+                return f"{EMOJI_PORTAL_ENTER}\n{team} {position} {name} has entered the transfer portal{url_line}"
 
-            if direction == "incoming" and new_status == "committed":
-                if source_school:
-                    return f"🎯 Transfer commitment!\n{name} ({position}) from {source_school} has committed to {team} via the transfer portal!"
-                else:
-                    return f"🎯 Transfer commitment!\n{name} ({position}) has committed to {team} via the transfer portal!"
-            else:
-                return f"📝 Portal status update for {name} ({position}): {old_status} → {new_status}"
+            # Withdrawn from portal (player_removed with direction="outgoing")
+            elif event_type == "player_removed":
+                return f"{EMOJI_PORTAL_WITHDRAW}\n{team} {position} {name} has withdrawn from the transfer portal{url_line}"
 
-    # Fallback
+        # INCOMING DIRECTION
+        elif direction == "incoming":
+            # Signed (status = "signed" or "enrolled")
+            if status_lower in ("signed", "enrolled"):
+                # Signed messages don't include URL per requirements
+                return f"{EMOJI_SIGNED}\n{source_school} {position} {name} has signed with the {team}"
+
+            # Committed (new_player with direction="incoming")
+            elif event_type == "new_player":
+                return f"{EMOJI_COMMITTED}\n{source_school} {position} {name} has committed to the {team}{url_line}"
+
+            # Decommitted (player_removed with direction="incoming")
+            elif event_type == "player_removed":
+                return (
+                    f"{EMOJI_DECOMMITTED}\n{source_school} {position} {name} has decommitted from the {team}{url_line}"
+                )
+
+    # Fallback for unhandled cases
     return f"Player update: {name} ({position}) - {team}"

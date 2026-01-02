@@ -112,17 +112,17 @@ git push origin main
 
 In Railway dashboard → Variables, add:
 
-| Variable | Value |
-|----------|-------|
-| `GH_PAT` | Your GitHub PAT |
-| `SUPABASE_URL` | Your Supabase project URL |
-| `SUPABASE_KEY` | Your Supabase service role key |
-| `ON3_TEAM_NAME` | Team name for On3 (e.g., `auburn-tigers`) |
-| `TEAM_247_NAME` | Team name for 247Sports (e.g., `auburn`) |
-| `ON3_YEAR` | Recruiting year for On3 |
-| `TEAM_247_YEAR` | Recruiting year for 247Sports |
-| `TEAM` | Team display name (e.g., `Auburn Tigers`) |
-| `REDIS_URL` | Redis connection URL (optional, for social media queue) |
+| Variable        | Value                                                   |
+| --------------- | ------------------------------------------------------- |
+| `GH_PAT`        | Your GitHub PAT                                         |
+| `SUPABASE_URL`  | Your Supabase project URL                               |
+| `SUPABASE_KEY`  | Your Supabase service role key                          |
+| `ON3_TEAM_NAME` | Team name for On3 (e.g., `auburn-tigers`)               |
+| `TEAM_247_NAME` | Team name for 247Sports (e.g., `auburn`)                |
+| `ON3_YEAR`      | Recruiting year for On3                                 |
+| `TEAM_247_YEAR` | Recruiting year for 247Sports                           |
+| `TEAM`          | Team display name (e.g., `Auburn Tigers`)               |
+| `REDIS_URL`     | Redis connection URL (optional, for social media queue) |
 
 ### 4. Cron schedule
 
@@ -176,6 +176,7 @@ uv run rq info --url redis://localhost:6379
 **1. Provision Redis**
 
 In Railway dashboard:
+
 - Click "New" → "Database" → "Add Redis"
 - Railway creates a Redis service with a `REDIS_URL` variable
 
@@ -183,10 +184,10 @@ In Railway dashboard:
 
 In your existing cfb-tracker service → Variables tab, add:
 
-| Variable | Value |
-|----------|-------|
-| `TEAM` | `Auburn Tigers` (or your team name) |
-| `REDIS_URL` | Reference: `${{Redis.REDIS_URL}}` |
+| Variable    | Value                               |
+| ----------- | ----------------------------------- |
+| `TEAM`      | `Auburn Tigers` (or your team name) |
+| `REDIS_URL` | Reference: `${{Redis.REDIS_URL}}`   |
 
 **3. Create worker service**
 
@@ -197,8 +198,8 @@ In your existing cfb-tracker service → Variables tab, add:
    - **Custom Start Command:** `uv run rq worker social-posts --url $REDIS_URL`
 4. In Variables tab, add:
 
-| Variable | Value |
-|----------|-------|
+| Variable    | Value                             |
+| ----------- | --------------------------------- |
 | `REDIS_URL` | Reference: `${{Redis.REDIS_URL}}` |
 
 The worker uses the same Docker image as the scraper but with a different start command. The `${{Redis.REDIS_URL}}` reference automatically pulls the connection URL from your Redis service.
@@ -224,6 +225,7 @@ Workers receive job payloads like:
 ```
 
 The worker generates messages like:
+
 - **New recruit:** "🎉 New recruit alert! ⭐⭐⭐⭐ John Smith (QB) from Birmingham, AL..."
 - **Commitment:** "🔥 COMMITMENT ALERT! 🔥 John Smith (QB) has committed to Auburn Tigers!"
 - **Portal entry:** "📥 Portal update! Mike Johnson (WR) from Alabama is entering the transfer portal..."
@@ -316,11 +318,4 @@ src/cfb_tracker/
 ├── db.py            # Supabase client wrapper
 ├── queue.py         # Redis queue management
 └── worker.py        # Social media job processor
-
-supabase/
-├── functions/
-│   └── webhook-forwarder/
-│       └── index.ts    # Edge function for webhooks
-└── migrations/
-    └── 001_webhook_triggers.sql  # Database triggers
 ```

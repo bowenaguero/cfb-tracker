@@ -36,7 +36,6 @@ def init_queue() -> bool:
         _redis_available = True
 
         logger.info("Redis queue initialized successfully", extra={"queue": "social-posts"})
-        return True
 
     except RedisConnectionError as e:
         logger.warning(
@@ -49,10 +48,12 @@ def init_queue() -> bool:
         logger.exception("Unexpected error initializing Redis queue")
         _redis_available = False
         return False
+    else:
+        return True
 
 
 def enqueue_event(
-    event_type: Literal["new_player", "status_change"],
+    event_type: Literal["new_player", "status_change", "player_removed"],
     table: Literal["recruits", "portal"],
     player_data: dict,
     old_status: str | None = None,
@@ -85,6 +86,7 @@ def enqueue_event(
                 "name": player_data.get("name"),
                 "position": player_data.get("position"),
                 "entry_id": player_data.get("entry_id"),
+                "player_url": player_data.get("player_url"),
             },
         }
 
@@ -124,7 +126,6 @@ def enqueue_event(
                 "table": table,
             },
         )
-        return True
 
     except Exception:
         logger.exception(
@@ -135,3 +136,5 @@ def enqueue_event(
             },
         )
         return False
+    else:
+        return True
