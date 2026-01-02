@@ -1,6 +1,6 @@
 # cfb-tracker
 
-Syncs college football recruiting and transfer portal data from On3 and 247Sports to Supabase. Designed to run as a cron job on Railway.
+Syncs college football recruiting and transfer portal data from 247Sports to Supabase. Designed to run as a cron job on Railway.
 
 ## Prerequisites
 
@@ -64,12 +64,8 @@ Create a `.env` file:
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_KEY=your-service-role-key
 
-# Team names (as they appear in URLs)
-ON3_TEAM_NAME=auburn-tigers
+# 247Sports configuration
 TEAM_247_NAME=auburn
-
-# Recruiting years
-ON3_YEAR=2026
 TEAM_247_YEAR=2026
 
 # Team display name (for social media posts)
@@ -117,9 +113,7 @@ In Railway dashboard → Variables, add:
 | `GH_PAT`        | Your GitHub PAT                                         |
 | `SUPABASE_URL`  | Your Supabase project URL                               |
 | `SUPABASE_KEY`  | Your Supabase service role key                          |
-| `ON3_TEAM_NAME` | Team name for On3 (e.g., `auburn-tigers`)               |
 | `TEAM_247_NAME` | Team name for 247Sports (e.g., `auburn`)                |
-| `ON3_YEAR`      | Recruiting year for On3                                 |
 | `TEAM_247_YEAR` | Recruiting year for 247Sports                           |
 | `TEAM`          | Team display name (e.g., `Auburn Tigers`)               |
 | `REDIS_URL`     | Redis connection URL (optional, for social media queue) |
@@ -234,6 +228,45 @@ The worker generates messages like:
 
 If Redis is unavailable, the scraper logs a warning and continues syncing to Supabase without enqueuing jobs. This ensures the core functionality (data sync) is never blocked by social media posting.
 
+## X (Twitter) Posting (optional)
+
+Post player updates to X automatically when the worker processes jobs.
+
+### 1. Create X Developer App
+
+1. Go to [X Developer Portal](https://developer.x.com/en/portal/dashboard)
+2. Create a new Project and App
+3. In App Settings → User authentication settings:
+   - Enable OAuth 1.0a
+   - Set App permissions to "Read and Write"
+4. In Keys and Tokens, generate:
+   - API Key and Secret
+   - Access Token and Secret
+
+### 2. Add credentials to `.env`
+
+```env
+X_API_KEY=your_api_key
+X_API_SECRET=your_api_secret
+X_ACCESS_TOKEN=your_access_token
+X_ACCESS_TOKEN_SECRET=your_access_token_secret
+```
+
+### 3. Railway deployment
+
+Add these variables to your **worker service**:
+
+| Variable                | Value                        |
+| ----------------------- | ---------------------------- |
+| `X_API_KEY`             | Your X API key               |
+| `X_API_SECRET`          | Your X API secret            |
+| `X_ACCESS_TOKEN`        | Your X access token          |
+| `X_ACCESS_TOKEN_SECRET` | Your X access token secret   |
+
+### Graceful degradation
+
+If X credentials are not configured, the worker continues processing jobs and logs messages without posting to X. This allows testing the full pipeline without a live X account.
+
 ## Webhooks (optional)
 
 Send notifications to external services when records are added, updated, or deleted in Supabase.
@@ -295,16 +328,15 @@ Your external endpoint will receive:
 
 ## How it works
 
-1. **Fetches data** from On3 and 247Sports using cfb-cli
-2. **Normalizes names** to handle variations across sources:
+1. **Fetches data** from 247Sports using cfb-cli
+2. **Normalizes names** to handle variations:
    - "DJ Smith" and "Derrick Smith" → same player
    - "John Smith Jr." and "John Smith, Jr" → same player
    - "Kensly Ladour-Foustin III" and "Kensley Foustin" → same player
-3. **Merges with 247 as authoritative** - 247Sports data takes priority; On3 only fills gaps
-4. **Syncs to Supabase** - upserts new/updated records, deletes players no longer in source data
-5. **Enqueues social media jobs** (optional) - when new players are added or status changes, jobs are sent to Redis queue
-6. **Worker processes jobs** (optional) - generates and posts social media updates (currently simulated)
-7. **Logs in JSON format** for easy parsing in production
+3. **Syncs to Supabase** - upserts new/updated records, deletes players no longer in source data
+4. **Enqueues social media jobs** (optional) - when new players are added or status changes, jobs are sent to Redis queue
+5. **Worker processes jobs** (optional) - generates and posts social media updates to X
+6. **Logs in JSON format** for easy parsing in production
 
 ## Project structure
 
@@ -313,9 +345,10 @@ src/cfb_tracker/
 ├── main.py          # Entry point, orchestrates sync
 ├── config.py        # Environment variable loading
 ├── normalizer.py    # Name normalization and ID generation
-├── fetcher.py       # Fetches and merges data from both sources
+├── fetcher.py       # Fetches data from 247Sports
 ├── sync.py          # Syncs data to Supabase, enqueues jobs
 ├── db.py            # Supabase client wrapper
 ├── queue.py         # Redis queue management
-└── worker.py        # Social media job processor
+├── worker.py        # Social media job processor
+└── twitter.py       # X (Twitter) client and posting
 ```

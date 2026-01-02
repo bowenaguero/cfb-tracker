@@ -3,7 +3,7 @@ from typing import Literal
 
 from redis import Redis
 from redis.exceptions import ConnectionError as RedisConnectionError
-from rq import Queue
+from rq import Queue, Retry
 
 from cfb_tracker.config import config
 
@@ -115,6 +115,7 @@ def enqueue_event(
             job_timeout="5m",
             result_ttl=3600,  # Keep results for 1 hour
             failure_ttl=86400,  # Keep failures for 24 hours
+            retry=Retry(max=3, interval=[60, 300, 900]),  # Retry at 1min, 5min, 15min
         )
 
         logger.info(

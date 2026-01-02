@@ -1,7 +1,8 @@
 import logging
-import time
 
 from pythonjsonlogger.json import JsonFormatter
+
+from cfb_tracker.twitter import init_twitter, post_tweet
 
 # Set up JSON logging for worker
 handler = logging.StreamHandler()
@@ -16,6 +17,9 @@ root.setLevel(logging.INFO)
 root.handlers = [handler]
 
 logger = logging.getLogger(__name__)
+
+# Initialize X client at module load (worker startup)
+init_twitter()
 
 # Emoji constants for message types
 EMOJI_COMMITTED = "\u2705"  # ✅ checkmark
@@ -56,9 +60,11 @@ def process_social_post(data: dict) -> dict:
 
     logger.info("Social post message generated", extra={"post_content": message, "player_name": player.get("name")})
 
-    # Simulate social media API call (2-second sleep)
-    # In production, this would be replaced with actual API calls to Twitter/BlueSky/etc.
-    time.sleep(2)
+    # Post to X (returns None if disabled)
+    tweet_result = post_tweet(message)
+
+    if tweet_result:
+        logger.info("Posted to X", extra={"tweet_id": tweet_result.get("id")})
 
     logger.info(
         "Social post job completed",
@@ -66,6 +72,7 @@ def process_social_post(data: dict) -> dict:
             "event_type": event_type,
             "player_name": player.get("name"),
             "table": table,
+            "tweet_id": tweet_result.get("id") if tweet_result else None,
         },
     )
 
@@ -74,6 +81,7 @@ def process_social_post(data: dict) -> dict:
         "message": message,
         "player": player.get("name"),
         "event_type": event_type,
+        "tweet_id": tweet_result.get("id") if tweet_result else None,
     }
 
 

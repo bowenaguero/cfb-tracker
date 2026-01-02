@@ -13,6 +13,11 @@ class Config(BaseSettings):
     TEAM_247_YEAR: int
     REDIS_URL: str | None = None
     TEAM: str
+    # X (Twitter) API credentials - all optional
+    X_API_KEY: str | None = None
+    X_API_SECRET: str | None = None
+    X_ACCESS_TOKEN: str | None = None
+    X_ACCESS_TOKEN_SECRET: str | None = None
 
 
 config = Config()
