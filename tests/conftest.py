@@ -6,8 +6,6 @@ import os
 # This is necessary because config.py loads settings at module import time
 os.environ.setdefault("SUPABASE_URL", "https://test.supabase.co")
 os.environ.setdefault("SUPABASE_KEY", "test-service-role-key")
-os.environ.setdefault("ON3_TEAM_NAME", "test-team")
-os.environ.setdefault("ON3_YEAR", "2026")
 os.environ.setdefault("TEAM_247_NAME", "test")
 os.environ.setdefault("TEAM_247_YEAR", "2026")
 os.environ.setdefault("TEAM", "Test Tigers")
@@ -31,8 +29,6 @@ def mock_config():
     config.SUPABASE_KEY = "test-key"
     config.RECRUITS_TABLE = "recruits"
     config.PORTAL_TABLE = "portal"
-    config.ON3_TEAM_NAME = "test-team"
-    config.ON3_YEAR = 2026
     config.TEAM_247_NAME = "test"
     config.TEAM_247_YEAR = 2026
     config.REDIS_URL = "redis://localhost:6379"
@@ -57,7 +53,6 @@ def sample_recruit():
         "rating": 0.9500,
         "status": "committed",
         "player_url": "https://247sports.com/player/john-smith",
-        "source": "247",
     }
 
 
@@ -73,7 +68,6 @@ def sample_recruit_no_url():
         "rating": 0.8800,
         "status": "uncommitted",
         "player_url": None,
-        "source": "on3",
     }
 
 
@@ -88,7 +82,6 @@ def sample_portal_incoming():
         "source_school": "Alabama",
         "status": "committed",
         "player_url": "https://247sports.com/player/alex-williams",
-        "source": "247",
     }
 
 
@@ -102,8 +95,7 @@ def sample_portal_outgoing():
         "direction": "outgoing",
         "source_school": None,
         "status": None,
-        "player_url": "https://on3.com/player/chris-davis",
-        "source": "on3",
+        "player_url": "https://247sports.com/player/chris-davis",
     }
 
 
@@ -160,7 +152,7 @@ def cfb_portal_player_outgoing():
         position="Linebacker",
         source_school=None,
         status=TransferStatus.ENTERED,
-        player_url="https://on3.com/player/chris-davis",
+        player_url="https://247sports.com/player/chris-davis",
     )
 
 

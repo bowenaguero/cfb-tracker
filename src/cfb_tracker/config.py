@@ -9,8 +9,6 @@ class Config(BaseSettings):
     SUPABASE_KEY: str
     RECRUITS_TABLE: str = "recruits"
     PORTAL_TABLE: str = "portal"
-    ON3_TEAM_NAME: str
-    ON3_YEAR: int
     TEAM_247_NAME: str
     TEAM_247_YEAR: int
     REDIS_URL: str | None = None
