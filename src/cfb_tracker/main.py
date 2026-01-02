@@ -28,6 +28,22 @@ logger = logging.getLogger(__name__)
 def main():
     logger.info("Starting CFB Tracker sync")
 
+    # Validate required config for sync service
+    missing = []
+    if not config.SUPABASE_URL:
+        missing.append("SUPABASE_URL")
+    if not config.SUPABASE_KEY:
+        missing.append("SUPABASE_KEY")
+    if not config.TEAM_247_NAME:
+        missing.append("TEAM_247_NAME")
+    if not config.TEAM_247_YEAR:
+        missing.append("TEAM_247_YEAR")
+    if not config.TEAM:
+        missing.append("TEAM")
+    if missing:
+        logger.error("Missing required environment variables", extra={"missing": missing})
+        raise SystemExit(f"Missing required config: {', '.join(missing)}")
+
     # Initialize Redis queue (graceful if unavailable)
     queue_available = init_queue()
     if queue_available:
