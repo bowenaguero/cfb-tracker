@@ -19,7 +19,7 @@ class TestRecruitToDict:
         result = _recruit_to_dict(cfb_recruit)
 
         assert result["name"] == "John Smith"
-        assert result["position"] == "qb"  # Normalized from "Quarterback"
+        assert result["position"] == "QB"  # Normalized from "Quarterback"
         assert result["hometown"] == "Birmingham, AL"
         assert result["stars"] == 4
         assert result["rating"] == 0.95
@@ -39,7 +39,7 @@ class TestRecruitToDict:
 
         result = _recruit_to_dict(recruit)
 
-        assert result["position"] == "wr"
+        assert result["position"] == "WR"
 
     def test_strips_name_whitespace(self):
         """Should strip whitespace from name."""
@@ -95,7 +95,7 @@ class TestPortalToDict:
         result = _portal_to_dict(cfb_portal_player_incoming, "incoming")
 
         assert result["name"] == "Alex Williams"
-        assert result["position"] == "rb"  # Normalized from "Running Back"
+        assert result["position"] == "RB"  # Normalized from "Running Back"
         assert result["direction"] == "incoming"
         assert result["source_school"] == "Alabama"
         assert result["status"] == TransferStatus.COMMITTED

@@ -13,35 +13,35 @@ def normalize_name(name: str) -> str:
 
 
 POSITION_MAP = {
-    "quarterback": "qb",
-    "running back": "rb",
-    "wide receiver": "wr",
-    "tight end": "te",
-    "offensive tackle": "ot",
-    "offensive guard": "og",
-    "offensive line": "ol",
-    "center": "c",
-    "defensive end": "de",
-    "defensive tackle": "dt",
-    "defensive line": "dl",
-    "linebacker": "lb",
-    "inside linebacker": "ilb",
-    "outside linebacker": "olb",
-    "cornerback": "cb",
-    "safety": "s",
-    "free safety": "fs",
-    "strong safety": "ss",
-    "athlete": "ath",
-    "kicker": "k",
-    "punter": "p",
-    "long snapper": "ls",
-    "edge": "edge",
+    "quarterback": "QB",
+    "running back": "RB",
+    "wide receiver": "WR",
+    "tight end": "TE",
+    "offensive tackle": "OT",
+    "offensive guard": "OG",
+    "offensive line": "OL",
+    "center": "C",
+    "defensive end": "DE",
+    "defensive tackle": "DT",
+    "defensive line": "DL",
+    "linebacker": "LB",
+    "inside linebacker": "ILB",
+    "outside linebacker": "OLB",
+    "cornerback": "CB",
+    "safety": "S",
+    "free safety": "FS",
+    "strong safety": "SS",
+    "athlete": "ATH",
+    "kicker": "K",
+    "punter": "P",
+    "long snapper": "LS",
+    "edge": "EDGE",
 }
 
 
 def normalize_position(position: str) -> str:
     pos = position.lower().strip()
-    return POSITION_MAP.get(pos, pos)
+    return POSITION_MAP.get(pos, pos.upper())
 
 
 SUFFIXES = {"jr", "sr", "ii", "iii", "iv", "v"}

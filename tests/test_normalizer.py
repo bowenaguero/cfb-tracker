@@ -35,55 +35,55 @@ class TestNormalizePosition:
     """Tests for normalize_position function."""
 
     def test_quarterback(self):
-        assert normalize_position("Quarterback") == "qb"
-        assert normalize_position("QUARTERBACK") == "qb"
+        assert normalize_position("Quarterback") == "QB"
+        assert normalize_position("QUARTERBACK") == "QB"
 
     def test_running_back(self):
-        assert normalize_position("Running Back") == "rb"
+        assert normalize_position("Running Back") == "RB"
 
     def test_wide_receiver(self):
-        assert normalize_position("Wide Receiver") == "wr"
+        assert normalize_position("Wide Receiver") == "WR"
 
     def test_tight_end(self):
-        assert normalize_position("Tight End") == "te"
+        assert normalize_position("Tight End") == "TE"
 
     def test_offensive_line(self):
-        assert normalize_position("Offensive Tackle") == "ot"
-        assert normalize_position("Offensive Guard") == "og"
-        assert normalize_position("Offensive Line") == "ol"
-        assert normalize_position("Center") == "c"
+        assert normalize_position("Offensive Tackle") == "OT"
+        assert normalize_position("Offensive Guard") == "OG"
+        assert normalize_position("Offensive Line") == "OL"
+        assert normalize_position("Center") == "C"
 
     def test_defensive_line(self):
-        assert normalize_position("Defensive End") == "de"
-        assert normalize_position("Defensive Tackle") == "dt"
-        assert normalize_position("Defensive Line") == "dl"
+        assert normalize_position("Defensive End") == "DE"
+        assert normalize_position("Defensive Tackle") == "DT"
+        assert normalize_position("Defensive Line") == "DL"
 
     def test_linebacker(self):
-        assert normalize_position("Linebacker") == "lb"
-        assert normalize_position("Inside Linebacker") == "ilb"
-        assert normalize_position("Outside Linebacker") == "olb"
+        assert normalize_position("Linebacker") == "LB"
+        assert normalize_position("Inside Linebacker") == "ILB"
+        assert normalize_position("Outside Linebacker") == "OLB"
 
     def test_secondary(self):
-        assert normalize_position("Cornerback") == "cb"
-        assert normalize_position("Safety") == "s"
-        assert normalize_position("Free Safety") == "fs"
-        assert normalize_position("Strong Safety") == "ss"
+        assert normalize_position("Cornerback") == "CB"
+        assert normalize_position("Safety") == "S"
+        assert normalize_position("Free Safety") == "FS"
+        assert normalize_position("Strong Safety") == "SS"
 
     def test_special_teams(self):
-        assert normalize_position("Kicker") == "k"
-        assert normalize_position("Punter") == "p"
-        assert normalize_position("Long Snapper") == "ls"
+        assert normalize_position("Kicker") == "K"
+        assert normalize_position("Punter") == "P"
+        assert normalize_position("Long Snapper") == "LS"
 
     def test_athlete(self):
-        assert normalize_position("Athlete") == "ath"
+        assert normalize_position("Athlete") == "ATH"
 
     def test_edge(self):
-        assert normalize_position("Edge") == "edge"
+        assert normalize_position("Edge") == "EDGE"
 
     def test_unknown_position_passthrough(self):
-        # Unknown positions should be lowercased and returned as-is
-        assert normalize_position("Unknown Position") == "unknown position"
-        assert normalize_position("QB") == "qb"
+        # Unknown positions should be uppercased and returned as-is
+        assert normalize_position("Unknown Position") == "UNKNOWN POSITION"
+        assert normalize_position("QB") == "QB"
 
 
 class TestGetNameKey:
