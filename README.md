@@ -1,6 +1,6 @@
 # cfb-tracker
 
-Syncs college football recruiting and transfer portal data from 247Sports to Supabase. Designed to run as a cron job on Railway.
+Syncs college football recruiting and transfer portal data from 247Sports to Supabase. Supports multiple teams in a single database using `team_id` for data isolation. Designed to run as a cron job on Railway.
 
 ## Prerequisites
 
@@ -27,33 +27,45 @@ Run this SQL in your Supabase dashboard (SQL Editor):
 
 ```sql
 CREATE TABLE IF NOT EXISTS recruits (
-    id bigint generated always as identity primary key,
-    entry_id text unique not null,
-    name text,
-    position text,
-    hometown text,
-    stars int,
-    rating float,
-    status text,
-    source text,
-    updated_at timestamptz
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    team_id TEXT NOT NULL,
+    entry_id TEXT NOT NULL,
+    name TEXT,
+    position TEXT,
+    hometown TEXT,
+    stars INTEGER,
+    rating DOUBLE PRECISION,
+    status TEXT,
+    source TEXT,
+    updated_at TIMESTAMPTZ,
+    player_url TEXT,
+    CONSTRAINT recruits_team_entry_unique UNIQUE (team_id, entry_id)
 );
 
 CREATE TABLE IF NOT EXISTS portal (
-    id bigint generated always as identity primary key,
-    entry_id text unique not null,
-    name text,
-    position text,
-    direction text,
-    source_school text,
-    status text,
-    source text,
-    updated_at timestamptz
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    team_id TEXT NOT NULL,
+    entry_id TEXT NOT NULL,
+    name TEXT,
+    position TEXT,
+    direction TEXT,
+    source_school TEXT,
+    status TEXT,
+    source TEXT,
+    updated_at TIMESTAMPTZ,
+    player_url TEXT,
+    CONSTRAINT portal_team_entry_unique UNIQUE (team_id, entry_id)
 );
+
+-- Indexes for team_id lookups
+CREATE INDEX idx_recruits_team_id ON recruits(team_id);
+CREATE INDEX idx_portal_team_id ON portal(team_id);
 
 ALTER TABLE recruits ENABLE ROW LEVEL SECURITY;
 ALTER TABLE portal ENABLE ROW LEVEL SECURITY;
 ```
+
+The `team_id` column stores the team identifier (from the `TEAM` environment variable), allowing multiple teams to coexist in the same tables. The composite unique constraint `(team_id, entry_id)` ensures player records are unique per team.
 
 ### 3. Configure environment
 
@@ -68,7 +80,7 @@ SUPABASE_KEY=your-service-role-key
 TEAM_247_NAME=auburn
 TEAM_247_YEAR=2026
 
-# Team display name (for social media posts)
+# Team identifier (used as team_id in database and for social media posts)
 TEAM="Auburn Tigers"
 
 # Redis (optional - for social media queue)
@@ -108,19 +120,47 @@ git push origin main
 
 In Railway dashboard → Variables, add:
 
-| Variable        | Value                                                   |
-| --------------- | ------------------------------------------------------- |
-| `GH_PAT`        | Your GitHub PAT                                         |
-| `SUPABASE_URL`  | Your Supabase project URL                               |
-| `SUPABASE_KEY`  | Your Supabase service role key                          |
-| `TEAM_247_NAME` | Team name for 247Sports (e.g., `auburn`)                |
-| `TEAM_247_YEAR` | Recruiting year for 247Sports                           |
-| `TEAM`          | Team display name (e.g., `Auburn Tigers`)               |
-| `REDIS_URL`     | Redis connection URL (optional, for social media queue) |
+| Variable        | Value                                                       |
+| --------------- | ----------------------------------------------------------- |
+| `GH_PAT`        | Your GitHub PAT                                             |
+| `SUPABASE_URL`  | Your Supabase project URL                                   |
+| `SUPABASE_KEY`  | Your Supabase service role key                              |
+| `TEAM_247_NAME` | Team name for 247Sports (e.g., `auburn`)                    |
+| `TEAM_247_YEAR` | Recruiting year for 247Sports                               |
+| `TEAM`          | Team identifier, stored as `team_id` (e.g., `Auburn Tigers`) |
+| `REDIS_URL`     | Redis connection URL (optional, for social media queue)     |
 
 ### 4. Cron schedule
 
 The service is configured to run every 10 minutes via `railway.toml`. To change the schedule, edit `cronSchedule` in that file.
+
+## Multi-Team Support
+
+Multiple teams can share the same Supabase database. Each team's data is isolated by the `team_id` column (populated from the `TEAM` environment variable).
+
+### Running multiple teams
+
+Deploy separate Railway services for each team, all pointing to the same Supabase project:
+
+| Service          | `TEAM`                 | `TEAM_247_NAME`  |
+| ---------------- | ---------------------- | ---------------- |
+| cfb-tracker-aub  | `Auburn Tigers`        | `auburn`         |
+| cfb-tracker-ksu  | `Kennesaw State Owls`  | `kennesaw-state` |
+| cfb-tracker-clem | `Clemson Tigers`       | `clemson`        |
+
+Each service syncs independently, and all data coexists in the same `recruits` and `portal` tables.
+
+### Querying by team
+
+```sql
+-- Get all recruits for a specific team
+SELECT * FROM recruits WHERE team_id = 'Auburn Tigers';
+
+-- Compare recruits across teams
+SELECT team_id, COUNT(*) as recruit_count
+FROM recruits
+GROUP BY team_id;
+```
 
 ## Social Media Queue (optional)
 
@@ -333,10 +373,11 @@ Your external endpoint will receive:
    - "DJ Smith" and "Derrick Smith" → same player
    - "John Smith Jr." and "John Smith, Jr" → same player
    - "Kensly Ladour-Foustin III" and "Kensley Foustin" → same player
-3. **Syncs to Supabase** - upserts new/updated records, deletes players no longer in source data
-4. **Enqueues social media jobs** (optional) - when new players are added or status changes, jobs are sent to Redis queue
-5. **Worker processes jobs** (optional) - generates and posts social media updates to X
-6. **Logs in JSON format** for easy parsing in production
+3. **Deduplicates records** by `entry_id` to handle name collisions within the same batch
+4. **Syncs to Supabase** - upserts new/updated records with `team_id`, deletes players no longer in source data
+5. **Enqueues social media jobs** (optional) - when new players are added or status changes, jobs are sent to Redis queue
+6. **Worker processes jobs** (optional) - generates and posts social media updates to X
+7. **Logs in JSON format** for easy parsing in production
 
 ## Project structure
 

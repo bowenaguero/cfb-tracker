@@ -35,7 +35,9 @@ def init_queue() -> bool:
         _queue = Queue("social-posts", connection=redis_conn)
         _redis_available = True
 
-        logger.info("Redis queue initialized successfully", extra={"queue": "social-posts"})
+        logger.info(
+            "Redis queue initialized successfully", extra={"queue": "social-posts"}
+        )
 
     except RedisConnectionError as e:
         logger.warning(
@@ -110,7 +112,7 @@ def enqueue_event(
 
         # Enqueue the job
         job = _queue.enqueue(
-            "cfb_tracker.worker.process_social_post",
+            "cfb_worker.worker.process_social_post",
             payload,
             job_timeout="5m",
             result_ttl=3600,  # Keep results for 1 hour
