@@ -233,3 +233,31 @@ class TestSyncTableIntegration:
         assert "new_player" in event_types
         assert "status_change" in event_types
         assert "player_removed" in event_types
+
+    def test_deduplicates_fresh_records_by_entry_id(self):
+        """Should deduplicate records with same entry_id, keeping last occurrence."""
+        # Two records with same entry_id (simulates name collision)
+        fresh_records = [
+            {"entry_id": "same-id", "name": "John Smith", "status": "uncommitted"},
+            {"entry_id": "same-id", "name": "John Smith Jr", "status": "committed"},
+        ]
+
+        mock_db = MagicMock()
+        mock_db.get_all_records.return_value = []
+        mock_enqueue = MagicMock()
+
+        with (
+            patch.object(sync_module, "db", mock_db),
+            patch.object(sync_module, "enqueue_event", mock_enqueue),
+        ):
+            result = sync_module.sync_table("recruits", fresh_records)
+
+        # Should only upsert 1 record (deduplicated)
+        assert result["upserted"] == 1
+
+        # Verify the last occurrence was kept
+        upsert_call = mock_db.upsert_records.call_args
+        upserted_records = upsert_call[0][1]
+        assert len(upserted_records) == 1
+        assert upserted_records[0]["name"] == "John Smith Jr"
+        assert upserted_records[0]["status"] == "committed"

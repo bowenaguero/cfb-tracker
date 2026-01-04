@@ -8,9 +8,13 @@ logger = logging.getLogger(__name__)
 
 
 def sync_table(table_name: str, fresh_records: list[dict]) -> dict:
+    # Deduplicate fresh records by entry_id (keep last occurrence)
+    fresh_by_id = {r["entry_id"]: r for r in fresh_records}
+    fresh_records = list(fresh_by_id.values())
+
     existing = db.get_all_records(table_name)
     existing_by_id = {r["entry_id"]: r for r in existing}
-    fresh_ids = {r["entry_id"] for r in fresh_records}
+    fresh_ids = set(fresh_by_id.keys())
 
     # Only upsert records where status changed or record is new
     to_upsert = []
