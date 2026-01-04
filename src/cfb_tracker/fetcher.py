@@ -8,6 +8,13 @@ from cfb_tracker.normalizer import generate_id, normalize_position
 logger = logging.getLogger(__name__)
 
 
+def _status_to_str(status) -> str | None:
+    """Convert status enum to string, or return None."""
+    if status is None:
+        return None
+    return str(status.value) if hasattr(status, "value") else str(status)
+
+
 def _recruit_to_dict(recruit) -> dict:
     return {
         "entry_id": generate_id(recruit.name),
@@ -16,7 +23,7 @@ def _recruit_to_dict(recruit) -> dict:
         "hometown": recruit.hometown,
         "stars": recruit.stars,
         "rating": recruit.rating,
-        "status": getattr(recruit, "status", None),
+        "status": _status_to_str(getattr(recruit, "status", None)),
         "source": "247sports",
         "player_url": getattr(recruit, "player_url", None),
     }
@@ -29,7 +36,7 @@ def _portal_to_dict(player, direction: str) -> dict:
         "position": normalize_position(player.position),
         "direction": direction,
         "source_school": getattr(player, "source_school", None),
-        "status": getattr(player, "status", None),
+        "status": _status_to_str(getattr(player, "status", None)),
         "source": "247sports",
         "player_url": getattr(player, "player_url", None),
     }

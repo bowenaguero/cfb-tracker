@@ -112,7 +112,7 @@ def enqueue_event(
 
         # Enqueue the job
         job = _queue.enqueue(
-            "cfb_worker.worker.process_social_post",
+            "cfb_tracker.worker.process_social_post",
             payload,
             job_timeout="5m",
             result_ttl=3600,  # Keep results for 1 hour
